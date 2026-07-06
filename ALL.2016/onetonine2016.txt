@@ -1,0 +1,540 @@
+
+###year2016_day20.py
+import sys
+MAX_IP = 4294967295
+
+
+# ----------------------------
+# Parse
+# ----------------------------
+def parse(text):
+    ranges = []
+
+    for line in text.strip().splitlines():
+        a, b = map(int, line.split("-"))
+        ranges.append((a, b))
+
+    return sorted(ranges)
+
+
+# ----------------------------
+# Merge intervals
+# ----------------------------
+def merge_ranges(ranges):
+    merged = []
+
+    for start, end in ranges:
+        if not merged or start > merged[-1][1] + 1:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+
+    return merged
+
+
+# ----------------------------
+# Solve
+# ----------------------------
+def solve(text):
+    ranges = parse(text)
+    merged = merge_ranges(ranges)
+
+    # --------------------
+    # Part 1
+    # --------------------
+    lowest = 0
+
+    for start, end in merged:
+        if lowest < start:
+            break
+        lowest = max(lowest, end + 1)
+
+    # --------------------
+    # Part 2
+    # --------------------
+    allowed = 0
+    cur = 0
+
+    for start, end in merged:
+        if cur < start:
+            allowed += start - cur
+
+        cur = max(cur, end + 1)
+
+    if cur <= MAX_IP:
+        allowed += MAX_IP - cur + 1
+
+    return lowest, allowed
+
+
+# ----------------------------
+# Run
+# ----------------------------
+if __name__ == "__main__":
+    with open(sys.argv[1]) as f:
+        text = f.read()
+
+    p1, p2 = solve(text)
+
+    print(f"2016 day20: p_ans_1: {p1}")
+    print(f"2016 day20: p_ans_2: {p2}")
+###year2016_day21.py
+import itertools
+
+def apply(pw, ins):
+    pw = list(pw)
+
+    for line in ins:
+        parts = line.strip().split()
+
+        if parts[0] == "swap" and parts[1] == "position":
+            x, y = int(parts[2]), int(parts[5])
+            pw[x], pw[y] = pw[y], pw[x]
+
+        elif parts[0] == "swap" and parts[1] == "letter":
+            x, y = parts[2], parts[5]
+            pw = [y if c == x else x if c == y else c for c in pw]
+
+        elif parts[0] == "rotate":
+            if parts[1] in ("left", "right"):
+                steps = int(parts[2]) % len(pw)
+                if parts[1] == "right":
+                    steps = -steps
+                pw = pw[steps:] + pw[:steps]
+
+            else:  # based on position of letter
+                x = parts[-1]
+                i = pw.index(x)
+                steps = 1 + i
+                if i >= 4:
+                    steps += 1
+                steps %= len(pw)
+
+                pw = pw[-steps:] + pw[:-steps]
+
+        elif parts[0] == "reverse":
+            x, y = int(parts[2]), int(parts[4])
+            pw[x:y+1] = reversed(pw[x:y+1])
+
+        elif parts[0] == "move":
+            x, y = int(parts[2]), int(parts[5])
+            ch = pw.pop(x)
+            pw.insert(y, ch)
+
+    return "".join(pw)
+
+
+def solve_part2(instructions, target):
+    for perm in itertools.permutations(target):
+        candidate = "".join(perm)
+        if apply(candidate, instructions) == target:
+            return candidate
+    return None
+
+
+# ---- USAGE ----
+import sys
+instructions = open(sys.argv[1]).read().strip().splitlines()
+
+# Part 1
+print(f"2016 day21: p_ans_1: {apply('abcdefgh', instructions)}")
+
+# Part 2
+print(f"2016 day21: p_ans_2: {solve_part2(instructions, 'fbgdceah')}")
+###year2016_day22.py
+import re #, os
+import sys
+
+# read nodes in a dictionary
+d_nodes = {}
+with open(sys.argv[1], 'r') as f:
+    for line in f:
+        if line[0] != '/':
+            continue
+        x, y, size, used, avail, perc = map(int, re.findall(r'\d+', line))
+        d_nodes[(x, y)] = {'used': used, 'avail': avail}
+
+lx = max([val[0] for val in d_nodes.keys()])+1
+ly = max([val[1] for val in d_nodes.keys()])+1
+
+# puzzle1 - count viable pairs
+cnt = 0
+vals = list(d_nodes.values())
+for i in range(len(vals)):
+    for j in range(i+1, len(vals)):
+        if vals[i]['used'] != 0 and vals[i]['used'] <= vals[j]['avail']:
+            cnt += 1 
+        if vals[j]['used'] != 0 and vals[j]['used'] <= vals[i]['avail']:
+            cnt += 1
+print(f"2016 day22: p_ans_1: {cnt}")
+
+def print_map(path = []):
+    for y in range(ly):
+        for x in range(lx):
+            if (x, y) == goal:
+                c = '{}'
+            elif (x, y) == start:
+                c = '[]'
+            elif (x, y) == empty:
+                c = '__'
+            elif (x, y) in path:
+                c = '()'
+            else:
+                c = '..' if d_nodes[(x, y)]['used'] < 100  else '##'
+            print(c, end='')
+        print("")
+    print("")
+    
+
+def find_path(start, end, obst=None):
+    # reset BFS
+    for value in d_nodes.values():
+        value['dist'] = float('inf')
+        value['prev'] = None
+    # do the actual BFS
+    queue = [start]
+    d_nodes[start]['dist'] = 0
+    while len(queue) > 0:
+        n = queue.pop(0)
+        for x, y in [(n[0]+1, n[1]), (n[0]-1, n[1]), (n[0], n[1]+1), (n[0], n[1]-1)]:
+            if 0<=x<lx and 0<=y<ly and d_nodes[(x,y)]['used'] < 100 and (x, y) != obst:
+                if d_nodes[(x, y)]['dist'] > d_nodes[n]['dist'] + 1:
+                    d_nodes[(x, y)]['dist'] = d_nodes[n]['dist'] + 1
+                    d_nodes[(x, y)]['prev'] = n
+                    queue.append((x, y))
+                if (x, y) == end:
+                    path = [(x, y)]
+                    while d_nodes[path[-1]]['prev'] != None:
+                        path.append(d_nodes[path[-1]]['prev'])
+                    return path[-2::-1] # reverse, don't include start
+
+
+
+start = (0, 0)
+goal = (lx-1, 0)
+empty = (None, None)
+for key in d_nodes:
+    if d_nodes[key]['used'] == 0:
+        empty = key
+        break
+# algorithm (S = start, G = goal)
+# 1. find shortest path pGS from G to S
+# 2. find shortest path p_ from _ to pG[0]
+# 3. cnt += len(p_) + 1 (+1 is for swapping G <-> _ in the next step)
+# 4. _ = G, G = pG.pop(0)
+# 5. repeat until G = S
+pathGS = find_path(goal, start)
+cnt = 0
+while goal != start:
+    path_ = find_path(empty, pathGS.pop(0), obst=goal)
+    cnt += len(path_) + 1
+    # while len(path_) > 1:
+    #     os.system('clear')
+    #     empty = path_.pop(0)
+    #     print_map(path_)
+    #     input()
+    empty = goal
+    goal = path_[-1]
+    # os.system('clear')
+    # print_map()
+    # input()
+print(f"2016 day22: p_ans_2: {cnt}")
+###year2016_day23.py
+import sys
+import math
+
+# ----------------------------
+# Helpers
+# ----------------------------
+def get(x, regs):
+    return regs[x] if x.isalpha() else int(x)
+
+
+# ----------------------------
+# Toggle rules
+# ----------------------------
+def toggle(instr):
+    parts = instr.split()
+
+    if len(parts) == 2:
+        # inc <-> dec
+        op = "dec" if parts[0] == "inc" else "inc"
+        return op + " " + parts[1]
+
+    if parts[0] == "jnz":
+        return "cpy " + parts[1] + " " + parts[2]
+
+    if parts[0] == "cpy":
+        return "jnz " + parts[1] + " " + parts[2]
+
+    return instr
+
+
+# ----------------------------
+# Full interpreter (correct)
+# ----------------------------
+def run(program, regs):
+    program = program[:]
+    i = 0
+
+    while i < len(program):
+        parts = program[i].split()
+        op = parts[0]
+
+        if op == "cpy":
+            x, y = parts[1], parts[2]
+            if y.isalpha():
+                regs[y] = get(x, regs)
+            i += 1
+
+        elif op == "inc":
+            regs[parts[1]] += 1
+            i += 1
+
+        elif op == "dec":
+            regs[parts[1]] -= 1
+            i += 1
+
+        elif op == "jnz":
+            x, y = parts[1], parts[2]
+            if get(x, regs) != 0:
+                i += get(y, regs)
+            else:
+                i += 1
+
+        elif op == "tgl":
+            x = get(parts[1], regs)
+            target = i + x
+
+            if 0 <= target < len(program):
+                program[target] = toggle(program[target])
+
+            i += 1
+
+        else:
+            i += 1
+
+    return regs
+
+
+# ----------------------------
+# FAST PART 2 OPTIMISATION
+# ----------------------------
+def part2_fast(n):
+    # Day 23 program structure:
+    #
+    # factorial(12) + (x * y)
+    #
+    # The multiplication constants are in the final lines:
+    #
+    # cpy X c
+    # jnz Y d
+    #
+    # We extract them automatically.
+
+    x = int(program[-7].split()[1])
+    y = int(program[-6].split()[1])
+
+    return math.factorial(12) + (x * y)
+
+
+# ----------------------------
+# Main
+# ----------------------------
+if __name__ == "__main__":
+    program = open(sys.argv[1]).read().splitlines()
+
+    # ---------------- Part 1 ----------------
+    regs1 = {"a": 7, "b": 0, "c": 0, "d": 0}
+    run(program, regs1)
+    print(f"2016 day23: p_ans_1: {regs1['a']}")
+
+    # ---------------- Part 2 (FAST) ----------------
+    print(f"2016 day23: p_ans_2: {part2_fast(12)}")
+###year2016_day24.py
+import sys
+from collections import deque
+from functools import lru_cache
+
+# ----------------------------
+# Parse grid
+# ----------------------------
+def parse(grid):
+    points = {}
+    for y, row in enumerate(grid):
+        for x, c in enumerate(row):
+            if c.isdigit():
+                points[c] = (x, y)
+    return points
+
+
+# ----------------------------
+# BFS shortest path in grid
+# ----------------------------
+def bfs(grid, start):
+    h, w = len(grid), len(grid[0])
+    sx, sy = start
+
+    q = deque([(sx, sy, 0)])
+    seen = {(sx, sy)}
+
+    dist = {}
+
+    while q:
+        x, y, d = q.popleft()
+
+        if grid[y][x].isdigit():
+            dist[grid[y][x]] = d
+
+        for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+            nx, ny = x + dx, y + dy
+
+            if 0 <= nx < w and 0 <= ny < h:
+                if grid[ny][nx] != "#" and (nx, ny) not in seen:
+                    seen.add((nx, ny))
+                    q.append((nx, ny, d + 1))
+
+    return dist
+
+
+# ----------------------------
+# Build distance graph
+# ----------------------------
+def build_distances(grid, points):
+    dist = {}
+
+    for p, pos in points.items():
+        dist[p] = bfs(grid, pos)
+
+    return dist
+
+
+# ----------------------------
+# TSP DP
+# ----------------------------
+def solve(dist, return_to_start=False):
+    keys = sorted(dist.keys())
+    n = len(keys)
+
+    start = "0"
+
+    idx = {k: i for i, k in enumerate(keys)}
+
+    @lru_cache(None)
+    def dp(pos, visited):
+        if visited == (1 << n) - 1:
+            if return_to_start:
+                return dist[pos][start]
+            return 0
+
+        best = float("inf")
+
+        for nxt in keys:
+            if not (visited & (1 << idx[nxt])):
+                best = min(best, dist[pos][nxt] + dp(nxt, visited | (1 << idx[nxt])))
+
+        return best
+
+    return dp(start, 1 << idx[start])
+
+
+# ----------------------------
+# Main
+# ----------------------------
+if __name__ == "__main__":
+    grid = open(sys.argv[1]).read().splitlines()
+
+    points = parse(grid)
+    dist = build_distances(grid, points)
+
+    print(f"2016 day24: p_ans_1: {solve(dist, return_to_start=False)}")
+    print(f"2016 day24: p_ans_2: {solve(dist, return_to_start=True)}")
+###year2016_day25.py
+import sys
+
+# ----------------------------
+# Helpers
+# ----------------------------
+def get_val(x, regs):
+    return regs[x] if x.isalpha() else int(x)
+
+
+# ----------------------------
+# Interpreter with output capture
+# ----------------------------
+def run(program, regs, max_output=100):
+    program = program[:]
+    i = 0
+    out = []
+
+    while i < len(program):
+        parts = program[i].split()
+        op = parts[0]
+
+        if op == "cpy":
+            x, y = parts[1], parts[2]
+            if y.isalpha():
+                regs[y] = get_val(x, regs)
+            i += 1
+
+        elif op == "inc":
+            x = parts[1]
+            if x.isalpha():
+                regs[x] += 1
+            i += 1
+
+        elif op == "dec":
+            x = parts[1]
+            if x.isalpha():
+                regs[x] -= 1
+            i += 1
+
+        elif op == "jnz":
+            x, y = parts[1], parts[2]
+            if get_val(x, regs) != 0:
+                i += get_val(y, regs)
+            else:
+                i += 1
+
+        elif op == "out":
+            x = parts[1]
+            out.append(get_val(x, regs))
+
+            # early exit if bad pattern
+            if len(out) > 1:
+                if out[-1] == out[-2]:
+                    return False
+
+            if len(out) >= max_output:
+                return True
+
+            i += 1
+
+        else:
+            i += 1
+
+    return False
+
+
+# ----------------------------
+# Solve
+# ----------------------------
+def solve(program):
+    a = 0
+
+    while True:
+        regs = {"a": a, "b": 0, "c": 0, "d": 0}
+
+        if run(program, regs):
+            return a
+
+        a += 1
+
+
+# ----------------------------
+# Main
+# ----------------------------
+if __name__ == "__main__":
+    program = open(sys.argv[1]).read().splitlines()
+
+    print(f"2016 day25: p_ans_1: {solve(program)}")
