@@ -1,0 +1,154 @@
+
+###year2017_day24.py
+import sys
+from collections import defaultdict
+
+# -------------------------
+# Parse components
+# -------------------------
+
+def parse(lines):
+    comps = []
+    for line in lines:
+        a, b = map(int, line.strip().split("/"))
+        comps.append((a, b))
+    return comps
+
+
+# -------------------------
+# DFS search all bridges
+# -------------------------
+
+def dfs(port, comps, used, strength, length, results):
+    results.append((length, strength))
+
+    for i, (a, b) in enumerate(comps):
+        if i in used:
+            continue
+
+        if a == port:
+            used.add(i)
+            dfs(b, comps, used, strength + a + b, length + 1, results)
+            used.remove(i)
+
+        elif b == port:
+            used.add(i)
+            dfs(a, comps, used, strength + a + b, length + 1, results)
+            used.remove(i)
+
+
+# -------------------------
+# Solve
+# -------------------------
+
+def solve(comps):
+    results = []
+    dfs(0, comps, set(), 0, 0, results)
+
+    # Part 1: max strength
+    part1 = max(strength for _, strength in results)
+
+    # Part 2: longest, then strongest
+    max_len = max(length for length, _ in results)
+
+    part2 = max(
+        strength for length, strength in results
+        if length == max_len
+    )
+
+    return part1, part2
+
+
+# -------------------------
+# Main
+# -------------------------
+
+def main():
+    lines = open(sys.argv[1]).read().strip().split("\n")
+    comps = parse(lines)
+
+    p1, p2 = solve(comps)
+
+    print(f"2017 day24: p_ans_1: {p1}")
+    print(f"2017 day24: p_ans_2: {p2}")
+
+
+if __name__ == "__main__":
+    main()
+###year2017_day25.py
+import sys
+import re
+from collections import defaultdict
+
+# -------------------------
+# Parse blueprint from input file
+# -------------------------
+
+def parse(lines):
+    start_state = re.search(r"Begin in state ([A-Z])", lines[0]).group(1)
+    steps = int(re.search(r"(\d+) steps", lines[1]).group(1))
+
+    states = {}
+
+    i = 3
+    while i < len(lines):
+        if not lines[i].startswith("In state"):
+            i += 1
+            continue
+
+        state = lines[i].split()[2][0]
+
+        # 0-value block
+        write0 = int(lines[i+2].split()[-1][0])
+        move0 = 1 if "right" in lines[i+3] else -1
+        next0 = lines[i+4].split()[-1][0]
+
+        # 1-value block
+        write1 = int(lines[i+6].split()[-1][0])
+        move1 = 1 if "right" in lines[i+7] else -1
+        next1 = lines[i+8].split()[-1][0]
+
+        states[state] = {
+            0: (write0, move0, next0),
+            1: (write1, move1, next1),
+        }
+
+        i += 9
+
+    return start_state, steps, states
+
+
+# -------------------------
+# Run Turing machine
+# -------------------------
+
+def run(start_state, steps, states):
+    tape = defaultdict(int)
+    cursor = 0
+    state = start_state
+
+    for _ in range(steps):
+        val = tape[cursor]
+        write, move, nxt = states[state][val]
+
+        tape[cursor] = write
+        cursor += move
+        state = nxt
+
+    return sum(tape.values())
+
+
+# -------------------------
+# Main
+# -------------------------
+
+def main():
+    lines = open(sys.argv[1]).read().strip().split("\n")
+
+    start_state, steps, states = parse(lines)
+
+    print(f"2017 day25: p_ans_1: {run(start_state, steps, states)}")
+
+
+if __name__ == "__main__":
+    main()
