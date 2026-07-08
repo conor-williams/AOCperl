@@ -1,0 +1,482 @@
+
+###year2023_day24.py
+import sys
+from itertools import combinations
+
+DAY = 24
+
+
+# --------------------------------------------------
+# PARSE
+# --------------------------------------------------
+def parse(data):
+    hail = []
+    for line in data.strip().splitlines():
+        p, v = line.split("@")
+        x, y, z = map(int, p.split(","))
+        vx, vy, vz = map(int, v.split(","))
+        hail.append((x, y, z, vx, vy, vz))
+    return hail
+
+
+# --------------------------------------------------
+# PART 1
+# --------------------------------------------------
+def intersect_2d(h1, h2, lo, hi):
+    x1, y1, _, vx1, vy1, _ = h1
+    x2, y2, _, vx2, vy2, _ = h2
+
+    det = vx1 * vy2 - vy1 * vx2
+    if det == 0:
+        return False
+
+    dx = x2 - x1
+    dy = y2 - y1
+
+    t1 = (dx * vy2 - dy * vx2) / det
+    t2 = (dx * vy1 - dy * vx1) / det
+
+    if t1 < 0 or t2 < 0:
+        return False
+
+    ix = x1 + vx1 * t1
+    iy = y1 + vy1 * t1
+
+    return lo <= ix <= hi and lo <= iy <= hi
+
+
+def part1(hail):
+    lo = 200000000000000
+    hi = 400000000000000
+
+    ans = 0
+    for a, b in combinations(hail, 2):
+        if intersect_2d(a, b, lo, hi):
+            ans += 1
+    return ans
+
+
+# --------------------------------------------------
+# GAUSSIAN ELIMINATION (FLOAT, NO LIBS)
+# --------------------------------------------------
+def gauss_solve(A, b):
+    n = len(A)
+
+    # build augmented matrix
+    M = [row[:] + [b[i]] for i, row in enumerate(A)]
+
+    for col in range(n):
+        # pivot
+        pivot = col
+        for i in range(col + 1, n):
+            if abs(M[i][col]) > abs(M[pivot][col]):
+                pivot = i
+
+        M[col], M[pivot] = M[pivot], M[col]
+
+        if abs(M[col][col]) < 1e-12:
+            continue
+
+        # normalize row
+        div = M[col][col]
+        for j in range(col, n + 1):
+            M[col][j] /= div
+
+        # eliminate
+        for i in range(n):
+            if i != col:
+                factor = M[i][col]
+                for j in range(col, n + 1):
+                    M[i][j] -= factor * M[col][j]
+
+    return [M[i][-1] for i in range(n)]
+
+
+# --------------------------------------------------
+# PART 2 (DERIVED LINEAR SYSTEM)
+# --------------------------------------------------
+def part2(h):
+    # We solve for (px, py, pz, vx, vy, vz)
+    # using 3 hailstones → 6 equations
+
+    (x1,y1,z1,vx1,vy1,vz1) = h[0]
+    (x2,y2,z2,vx2,vy2,vz2) = h[1]
+    (x3,y3,z3,vx3,vy3,vz3) = h[2]
+
+    A = []
+    b = []
+
+    # Each hailstone gives:
+    # (px - x) = (vxh - vx) * t etc
+    # eliminate t pairwise → linear equations
+
+    def add_eq(xa,ya,za,vxa,vya,vza, xb,yb,zb,vxb,vyb,vzb):
+        A.append([
+            (vya - vyb),
+            -(vxa - vxb),
+            0,
+            0,
+            (ya - yb),
+            -(xa - xb)
+        ])
+        b.append(
+            (xa*vya - ya*vxa) - (xb*vyb - yb*vxb)
+        )
+
+        A.append([
+            (vza - vzb),
+            0,
+            -(vxa - vxb),
+            (za - zb),
+            0,
+            -(xa - xb)
+        ])
+        b.append(
+            (xa*vza - za*vxa) - (xb*vzb - zb*vxb)
+        )
+
+    add_eq(*h[0], *h[1])
+    add_eq(*h[0], *h[2])
+    add_eq(*h[1], *h[2])
+
+    sol = gauss_solve(A, b)
+
+    px, py, pz, vx, vy, vz = sol
+
+    return int(round(px + py + pz))
+
+
+# --------------------------------------------------
+# MAIN
+# --------------------------------------------------
+def main():
+    with open(sys.argv[1]) as f:
+        hail = parse(f.read())
+
+    ans1 = part1(hail)
+    ans2 = part2(hail)
+
+    print(f"2023 day{DAY}: p_ans_1: {ans1}")
+
+
+if __name__ == "__main__":
+    main()
+import sys
+import re
+
+MAX_LINES = 320
+
+
+class Line:
+    def __init__(self):
+        self.Ix = 0
+        self.Iy = 0
+        self.Iz = 0
+        self.Isx = 0
+        self.Isy = 0
+        self.Isz = 0
+        self.slopexy = 0
+        self.cxy = 0
+
+
+class Nxyz:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.z = 0
+
+
+def main():
+    #print("\t\t2023 Day24.2")
+
+    blah = []
+    with open(sys.argv[1]) as f:
+        for line in f:
+            blah.append(line.strip())
+
+    leny = len(blah)
+
+    l = [Line() for _ in range(MAX_LINES)]
+
+    pattern = re.compile(r"(-?\d+), (-?\d+), (-?\d+) @ (-?\d+), (-?\d+), (-?\d+)")
+
+    for i in range(leny):
+        m = pattern.search(blah[i])
+        x, y, z, vx, vy, vz = map(int, m.groups())
+
+        l[i].Ix = x
+        l[i].Iy = y
+        l[i].Iz = z
+        l[i].Isx = vx
+        l[i].Isy = vy
+        l[i].Isz = vz
+
+        l[i].slopexy = l[i].Isy / l[i].Isx
+        l[i].cxy = l[i].Iy - l[i].slopexy * l[i].Ix
+
+    potX = [[0]*200 for _ in range(5)]
+    potY = [[0]*200 for _ in range(5)]
+    potXpos = [0]*5
+    potYpos = [0]*5
+
+    lineX = 0
+    lineY = 0
+
+    for i in range(leny-1):
+        for j in range(i+1, leny):
+            if l[i].Isx == l[j].Isx and l[i].Isy == l[j].Isy:
+
+                for z in range(-1000, 1000):
+
+                    if abs(z) > 100:
+                        if abs(z - l[i].Isx) != 0:
+                            xmove = abs(l[i].Ix - l[j].Ix) % abs(z - l[i].Isx)
+                            if xmove == 0:
+                                potX[lineX][potXpos[lineX]] = z
+                                potXpos[lineX] += 1
+
+                        if abs(z - l[i].Isy) != 0:
+                            ymove = abs(l[i].Iy - l[j].Iy) % abs(z - l[i].Isy)
+                            if ymove == 0:
+                                potY[lineY][potYpos[lineY]] = z
+                                potYpos[lineY] += 1
+
+                lineX += 1
+                lineY += 1
+
+    outY = []
+    for i in range(potYpos[0]):
+        for j in range(potYpos[1]):
+            if potY[0][i] == potY[1][j]:
+                if potY[0][i] not in outY:
+                    outY.append(potY[0][i])
+
+    outX = []
+    for i in range(potXpos[0]):
+        for j in range(potXpos[1]):
+            if potX[0][i] == potX[1][j]:
+                if potX[0][i] not in outX:
+                    outX.append(potX[0][i])
+
+    interX = [[0]*400 for _ in range(400)]
+    interY = [[0]*400 for _ in range(400)]
+    interZ = [[0]*400 for _ in range(400)]
+
+    interXpos = [0]*400
+    interYpos = [0]*400
+    interZpos = [0]*400
+
+    interXposLine = 0
+    interYposLine = 0
+    interZposLine = 0
+
+    for i in range(leny-1):
+        for j in range(i+1, leny):
+
+            if l[i].Isx == l[j].Isx:
+                for z in range(-1000, 1000):
+                    if z - l[i].Isx != 0:
+                        xmove = (l[i].Ix - l[j].Ix) % abs(z - l[i].Isx)
+                        if xmove == 0:
+                            if z not in interX[interXposLine]:
+                                interX[interXposLine][interXpos[interXposLine]] = z
+                                interXpos[interXposLine] += 1
+                interXposLine += 1
+
+            if l[i].Isy == l[j].Isy:
+                for y in range(-1000, 1000):
+                    if y - l[i].Isy != 0:
+                        ymove = (l[i].Iy - l[j].Iy) % abs(y - l[i].Isy)
+                        if ymove == 0:
+                            if y not in interY[interYposLine]:
+                                interY[interYposLine][interYpos[interYposLine]] = y
+                                interYpos[interYposLine] += 1
+                interYposLine += 1
+
+            if l[i].Isz == l[j].Isz:
+                for z in range(-1000, 1000):
+                    if z - l[i].Isz != 0:
+                        zmove = (l[i].Iz - l[j].Iz) % abs(z - l[i].Isz)
+                        if zmove == 0:
+                            if z not in interZ[interZposLine]:
+                                interZ[interZposLine][interZpos[interZposLine]] = z
+                                interZpos[interZposLine] += 1
+                interZposLine += 1
+
+    def reduce(inter, interpos, lines):
+        for l1 in range(1):
+            for l2 in range(1, lines):
+                for i in range(interpos[l1]):
+                    if inter[l1][i] == 0:
+                        continue
+                    found = False
+                    for j in range(interpos[l2]):
+                        if inter[l1][i] == inter[l2][j]:
+                            found = True
+                            break
+                    if not found:
+                        inter[l1][i] = 0
+                        break
+
+    reduce(interZ, interZpos, interZposLine)
+    reduce(interX, interXpos, interXposLine)
+    reduce(interY, interYpos, interYposLine)
+
+    cZ = 0
+    for i in range(interZpos[0]):
+        if interZ[0][i] != 0:
+            cZ = interZ[0][i]
+
+    cX = 0
+    for i in range(interXpos[0]):
+        if interX[0][i] != 0:
+            cX = interX[0][i]
+
+    cY = 0
+    for i in range(interYpos[0]):
+        if interY[0][i] != 0:
+            cY = interY[0][i]
+
+    ind1 = ind2 = ind3 = -1
+
+    for i in range(leny-1):
+        for j in range(i+1, leny):
+            for k in range(j+1, leny):
+                if l[i].Isx == l[j].Isx == l[k].Isx:
+                    ind1, ind2, ind3 = i, j, k
+                    break
+
+    Xt1Mt2 = (l[ind1].Ix - l[ind2].Ix) / (cX - l[ind1].Isx)
+    Xt1Mt3 = (l[ind1].Ix - l[ind3].Ix) / (cX - l[ind1].Isx)
+    Xt2Pt3 = (l[ind2].Ix - l[ind3].Ix) / (cX - l[ind2].Isx)
+
+    Xt3 = Xt1Mt2 - Xt1Mt3 + Xt2Pt3 / 2
+
+    stX = l[ind3].Ix + Xt3 * l[ind3].Isx - Xt3 * cX
+
+    q2 = l[1].Isx - cX
+    q1 = l[1].Isy - cY
+    q4 = l[2].Isx - cX
+    q3 = l[2].Isy - cY
+    q5 = l[2].Ix - l[1].Ix
+
+    B = (q4*q1)/(q2*q3)
+    B2 = (q5*q1)/q2
+
+    Yst = (l[1].Iy - B*l[2].Iy + B2) / (1 - B)
+
+    Xst = ((Yst - l[1].Iy)*(l[1].Isx-cX))/(l[1].Isy-cY) + l[1].Ix
+    Zst = ((Yst - l[1].Iy)*(l[1].Isz-cZ))/(l[1].Isy-cY) + l[1].Iz
+
+    print(f"2023 day{DAY}: p_ans_2: {int(Xst + Yst + Zst)}")
+
+
+if __name__ == "__main__":
+    main()
+###year2023_day25.py
+import sys
+from collections import defaultdict, deque
+from itertools import combinations
+
+
+def parse(data):
+    g = defaultdict(set)
+
+    for line in data.strip().splitlines():
+        left, right = line.split(":")
+        u = left.strip()
+        for v in right.strip().split():
+            g[u].add(v)
+            g[v].add(u)
+
+    return g
+
+
+# BFS shortest path
+def bfs(start, target, graph):
+    q = deque([start])
+    prev = {start: None}
+
+    while q:
+        u = q.popleft()
+        if u == target:
+            break
+        for v in graph[u]:
+            if v not in prev:
+                prev[v] = u
+                q.append(v)
+
+    if target not in prev:
+        return []
+
+    path = []
+    cur = target
+    while prev[cur] is not None:
+        path.append((prev[cur], cur))
+        cur = prev[cur]
+
+    return path
+
+
+def find_cut_edges(graph):
+    edge_count = defaultdict(int)
+    nodes = list(graph.keys())
+
+    # sample many shortest paths (structure reveals the 3 bottlenecks)
+    for _ in range(2000):
+        a, b = nodes[_ % len(nodes)], nodes[(_ * 7) % len(nodes)]
+        path = bfs(a, b, graph)
+
+        for e in path:
+            e = tuple(sorted(e))
+            edge_count[e] += 1
+
+    # top 3 most used edges = cut edges
+    cut = sorted(edge_count.items(), key=lambda x: -x[1])[:3]
+    return [e for e, _ in cut]
+
+
+def remove_edges(graph, edges):
+    g = {k: set(v) for k, v in graph.items()}
+
+    for a, b in edges:
+        g[a].discard(b)
+        g[b].discard(a)
+
+    return g
+
+
+def component_size(graph, start):
+    q = deque([start])
+    seen = {start}
+
+    while q:
+        u = q.popleft()
+        for v in graph[u]:
+            if v not in seen:
+                seen.add(v)
+                q.append(v)
+
+    return len(seen)
+
+
+def solve(data):
+    g = parse(data)
+
+    cut = find_cut_edges(g)
+    g2 = remove_edges(g, cut)
+
+    start = next(iter(g2))
+    size = component_size(g2, start)
+
+    total = len(g2)
+    return size * (total - size)
+
+
+def main():
+    with open(sys.argv[1]) as f:
+        print("2023 day25: p_ans_1:", solve(f.read()))
+
+
+if __name__ == "__main__":
+    main()
