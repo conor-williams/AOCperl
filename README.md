@@ -4,6 +4,6 @@
 <h2>To Run</h2>
 <ol>
   <li>sh First.sh - it does everything for you</li>
-  <li>note: the input files are mine specific: (find . -name \*.i1.txt | xargs tar -rvf xx.tar</li>
+  <li>note: the input files are mine specific: (find . -name \*.i1.txt | xargs tar -rvf xx.tar)</li>
   <li>if you are getting the incorrect answer, send me your input file (conor.williams@gmail.com)</li>
 </ol>
