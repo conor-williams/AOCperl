@@ -1,8 +1,9 @@
 <pre>Operation mango juice understander</pre>
-<pre>Jul 5/6th 2026 - y.2015, y.2016 -7(7) 8(7)</pre>
+<pre>Jul 5/6th 2026 - y.2015, y.2016 -7(7) 8(7) 9(7)</pre>
 
 <h2>To Run</h2>
 <ol>
   <li>sh First.sh - it does everything for you</li>
   <li>note: the input files are mine specific: (find . -name \*.i1.txt | xargs tar -rvf xx.tar</li>
+  <li>if you are getting the incorrect answer, send me your input file (conor.williams@gmail.com)</li>
 </ol>
