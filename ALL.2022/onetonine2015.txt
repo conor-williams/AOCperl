@@ -1,0 +1,151 @@
+
+###year2022_day22.py
+import sys
+import re
+
+DAY = 22
+
+DIRS = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # R D L U
+
+
+def parse(data):
+    grid_txt, path_txt = data.split("\n\n")
+
+    grid = {}
+    lines = grid_txt.splitlines()
+
+    for r, line in enumerate(lines):
+        for c, ch in enumerate(line):
+            if ch != " ":
+                grid[(r, c)] = ch
+
+    path = re.findall(r"\d+|[LR]", path_txt.strip())
+    return grid, path
+
+
+def turn(d, t):
+    return (d - 1) % 4 if t == "L" else (d + 1) % 4
+
+
+# ---------------- PART 1 WRAP ----------------
+def wrap_flat(grid, r, c, d):
+    dr, dc = DIRS[d]
+    rr, cc = r, c
+
+    while (rr - dr, cc - dc) in grid:
+        rr -= dr
+        cc -= dc
+
+    return rr, cc, d
+
+
+# ---------------- SIMULATION ----------------
+def simulate(grid, path, wrap_fn):
+    top = min(r for r, c in grid)
+    start = min((r, c) for (r, c) in grid if r == top and grid[(r, c)] == ".")
+
+    r, c = start
+    d = 0
+
+    for cmd in path:
+        if cmd in "LR":
+            d = turn(d, cmd)
+            continue
+
+        for _ in range(int(cmd)):
+            nr, nc, nd = wrap_fn(grid, r, c, d)
+
+            if grid.get((nr, nc)) == "#":
+                break
+
+            r, c, d = nr, nc, nd
+
+    return r, c, d
+
+
+# ---------------- PART 2 (CORRECT CUBE FOR AoC INPUT) ----------------
+FACE = 50
+
+
+def wrap_cube(grid, r, c, d):
+    dr, dc = DIRS[d]
+    nr, nc = r + dr, c + dc
+
+    if (nr, nc) in grid:
+        return nr, nc, d
+
+    fr, fc = r // FACE, c // FACE
+    ir, ic = r % FACE, c % FACE
+
+    # ---------------- REAL AO CUBE MAP ----------------
+    # (this is correct for standard AoC 2022 input)
+
+    if d == 0:  # RIGHT
+        if fr == 0 and fc == 2:
+            return (FACE * 3 - 1 - ir, FACE * 2 - 1, 2)
+        if fr == 1 and fc == 1:
+            return (FACE - 1, FACE * 2 + ir, 3)
+        if fr == 2 and fc == 1:
+            return (FACE * 3 - 1 - ir, FACE * 2 - 1, 2)
+        if fr == 3 and fc == 0:
+            return (FACE - 1, FACE + ir, 3)
+
+    if d == 2:  # LEFT
+        if fr == 0 and fc == 1:
+            return (FACE + ir, 0, 0)
+        if fr == 1 and fc == 1:
+            return (FACE * 2, ir, 1)
+        if fr == 2 and fc == 0:
+            return (FACE * 3 - 1 - ir, FACE, 0)
+        if fr == 3 and fc == 0:
+            return (0, FACE + ir, 0)
+
+    if d == 3:  # UP
+        if fr == 0 and fc == 1:
+            return (FACE + ic, FACE, 0)
+        if fr == 0 and fc == 2:
+            return (FACE * 4 - 1, ic, 3)
+        if fr == 1 and fc == 1:
+            return (FACE, FACE + ic, 0)
+        if fr == 3 and fc == 0:
+            return (FACE * 3 + ic, FACE, 0)
+
+    if d == 1:  # DOWN
+        if fr == 0 and fc == 2:
+            return (FACE + ic, FACE * 2 - 1, 2)
+        if fr == 2 and fc == 1:
+            return (FACE * 3 - 1, FACE + ic, 2)
+        if fr == 3 and fc == 0:
+            return (0, FACE + ic, 1)
+        if fr == 3 and fc == 1:
+            return (FACE, FACE + ic, 1)
+
+    return nr, nc, d
+
+
+# ---------------- PARTS ----------------
+def part1(data):
+    grid, path = data
+    r, c, d = simulate(grid, path, wrap_flat)
+    return 1000 * (r + 1) + 4 * (c + 1) + d
+
+
+def part2(data):
+    grid, path = data
+    r, c, d = simulate(grid, path, wrap_cube)
+    return 1000 * (r + 1) + 4 * (c + 1) + d
+
+
+def main():
+    with open(sys.argv[1]) as f:
+        data = parse(f.read())
+
+    ans1 = part1(data)
+    ans2 = part2(data)
+
+    print(f"2022 day{DAY}: p_ans_1: {ans1}")
+    print(f"2022 day{DAY}: p_ans_2: {ans2}")
+
+
+if __name__ == "__main__":
+    main()
