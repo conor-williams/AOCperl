@@ -1,0 +1,42 @@
+
+###year2020_day25.py
+import sys
+
+MOD = 20201227
+
+def transform(subject_number, loop_size):
+    value = 1
+    for _ in range(loop_size):
+        value = (value * subject_number) % MOD
+    return value
+
+
+def find_loop_size(public_key):
+    value = 1
+    loop = 0
+    subject = 7
+
+    while value != public_key:
+        value = (value * subject) % MOD
+        loop += 1
+
+    return loop
+
+
+def main():
+    with open(sys.argv[1]) as f:
+        lines = [int(x.strip()) for x in f if x.strip()]
+
+    card_public, door_public = lines
+
+    # find loop size for card
+    card_loop = find_loop_size(card_public)
+
+    # compute encryption key using door public key
+    ans = transform(door_public, card_loop)
+
+    print(f"2020 day25: p_ans_1: {ans}")
+
+
+if __name__ == "__main__":
+    main()
