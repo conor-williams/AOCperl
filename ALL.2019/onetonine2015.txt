@@ -1,0 +1,122 @@
+
+###year2019_day25.py
+import sys
+from collections import defaultdict, deque
+
+
+class VM:
+    def __init__(self, mem):
+        self.mem = defaultdict(int)
+        for i, v in enumerate(mem):
+            self.mem[i] = v
+        self.ip = 0
+        self.rb = 0
+        self.inp = deque()
+
+    def send(self, s):
+        self.inp.extend([ord(c) for c in s])
+
+    def run(self):
+        mem = self.mem
+        ip = self.ip
+        rb = self.rb
+        inp = self.inp
+        out = ""
+
+        def get(i, m):
+            if m == 0: return mem[mem[i]]
+            if m == 1: return mem[i]
+            return mem[rb + mem[i]]
+
+        def addr(i, m):
+            return mem[i] if m == 0 else rb + mem[i]
+
+        while True:
+            op = mem[ip]
+            m1 = (op // 100) % 10
+            m2 = (op // 1000) % 10
+            m3 = (op // 10000) % 10
+            op %= 100
+
+            if op == 1:
+                mem[addr(ip+3, m3)] = get(ip+1, m1) + get(ip+2, m2)
+                ip += 4
+
+            elif op == 2:
+                mem[addr(ip+3, m3)] = get(ip+1, m1) * get(ip+2, m2)
+                ip += 4
+
+            elif op == 3:
+                if not inp:
+                    self.ip, self.rb = ip, rb
+                    return out, False
+                mem[addr(ip+1, m1)] = inp.popleft()
+                ip += 2
+
+            elif op == 4:
+                out += chr(get(ip+1, m1))
+                ip += 2
+
+            elif op == 99:
+                return out, True
+
+            elif op == 5:
+                ip = get(ip+2, m2) if get(ip+1, m1) else ip+3
+
+            elif op == 6:
+                ip = get(ip+2, m2) if not get(ip+1, m1) else ip+3
+
+            elif op == 7:
+                mem[addr(ip+3, m3)] = int(get(ip+1, m1) < get(ip+2, m2))
+                ip += 4
+
+            elif op == 8:
+                mem[addr(ip+3, m3)] = int(get(ip+1, m1) == get(ip+2, m2))
+                ip += 4
+
+            elif op == 9:
+                rb += get(ip+1, m1)
+                ip += 2
+
+
+# =========================
+# LOAD PROGRAM
+# =========================
+
+program = list(map(int, open(sys.argv[1]).read().split(",")))
+vm = VM(program)
+
+
+# =========================
+# REAL INTERACTIVE LOOP
+# =========================
+
+print("=== START ===")
+
+buffer = ""
+
+def step(cmd):
+    vm.send(cmd + "\n")
+    return vm.run()
+
+
+# FIRST OUTPUT
+buffer, _ = vm.run()
+print(buffer)
+
+
+while True:
+    # VERY SIMPLE POLICY (TEMP DEBUG)
+    cmd = input("> ")
+
+    out, halted = step(cmd)
+
+    print(out)
+
+    if "Security Checkpoint" in out:
+        print("\nFOUND CHECKPOINT")
+        break
+
+    if halted:
+        print("HALTED")
+        break
