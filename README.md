@@ -8,4 +8,14 @@
   <li>if you are getting the incorrect answer, send me your input file (conor.williams@gmail.com)</li>
   <li>Running time of FIRST.sh) on a mid range laptop with "best performance": approx 14mins </li>
   <li>Ctrl-d to get out of interactive day 25 year 2023</li>
+
+  <li>
+<pre>for aocdl and aocAns (handies) down21.sh up2019.sh
+% cat ~/.aocdlconfig
+{
+    "session-cookie": "53616c7465QQQQQQQQ5f7125ef67fRRRce7c898a5e4184f3d0ca45daa9322072c24fa5957ae6fc5e47f99edbb56efbba9f599122d364a3e35c7be82d21a2b"
+
+}
+    </li>
+</pre>
 </ol>
