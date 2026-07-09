@@ -1,6 +1,6 @@
-<pre>Operation mango juice understander</pre>
-<pre>Jul 5/6th 2026 - y.2015, y.16 -17(7) 18(7) 19(7) 20(8) 21(8) 22(8) 23(9) 24()</pre>
-
+<pre>Operation mango juice underst<s>ander</s>tood</pre>
+<pre>Jul 5/6th 2026 - y.2015, y.16 -17(7) 18(7) 19(7) 20(8) 21(8) 22(8) 23(9) 24(9)</pre>
+<pre>codename: falkon xprest jobs in town - (never sleep on yourself)</pre>
 <h2>To Run</h2>
 <ol>
   <li>sh First.sh - it does everything for you</li>
